@@ -4,6 +4,10 @@ import { JobCard } from "./JobCard";
 interface JobGridProps {
   jobs: Job[];
   loading?: boolean;
+  analysisId?: number | null;
+  appliedJobIds?: Set<number>;
+  prepProgress?: Record<string, string[]>;
+  onAppliedChange?: (jobId: number, applied: boolean) => void;
 }
 
 function SkeletonCard() {
@@ -33,7 +37,7 @@ function SkeletonCard() {
   );
 }
 
-export function JobGrid({ jobs, loading }: JobGridProps) {
+export function JobGrid({ jobs, loading, analysisId, appliedJobIds, prepProgress, onAppliedChange }: JobGridProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -58,7 +62,16 @@ export function JobGrid({ jobs, loading }: JobGridProps) {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-      {jobs.map((job) => <JobCard key={job.id} job={job} />)}
+      {jobs.map((job) => (
+        <JobCard
+          key={job.id}
+          job={job}
+          analysisId={analysisId ?? null}
+          isApplied={appliedJobIds?.has(job.id) ?? false}
+          viewedTypes={prepProgress?.[String(job.id)] ?? []}
+          onAppliedChange={onAppliedChange}
+        />
+      ))}
     </div>
   );
 }

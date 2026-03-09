@@ -37,6 +37,25 @@ CREATE INDEX IF NOT EXISTS idx_jobs_remote  ON jobs(remote);
 CREATE INDEX IF NOT EXISTS idx_jobs_active  ON jobs(active) WHERE active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id);
 
+CREATE TABLE IF NOT EXISTS user_applications (
+    id           BIGSERIAL    PRIMARY KEY,
+    analysis_id  BIGINT       REFERENCES resume_analyses(id) ON DELETE CASCADE,
+    job_id       BIGINT       REFERENCES jobs(id) ON DELETE CASCADE,
+    applied_at   TIMESTAMPTZ  DEFAULT NOW(),
+    UNIQUE (analysis_id, job_id)
+);
+CREATE INDEX IF NOT EXISTS idx_applications_analysis ON user_applications(analysis_id);
+
+CREATE TABLE IF NOT EXISTS prep_progress (
+    id            BIGSERIAL    PRIMARY KEY,
+    analysis_id   BIGINT       REFERENCES resume_analyses(id) ON DELETE CASCADE,
+    job_id        BIGINT       REFERENCES jobs(id) ON DELETE CASCADE,
+    content_type  TEXT         NOT NULL,
+    viewed_at     TIMESTAMPTZ  DEFAULT NOW(),
+    UNIQUE (analysis_id, job_id, content_type)
+);
+CREATE INDEX IF NOT EXISTS idx_prep_progress_analysis ON prep_progress(analysis_id);
+
 CREATE TABLE IF NOT EXISTS resume_analyses (
     id              BIGSERIAL    PRIMARY KEY,
     candidate_name  TEXT         NOT NULL DEFAULT 'Anonymous',

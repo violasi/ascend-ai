@@ -1,4 +1,4 @@
-import type { PaginatedJobs, JobDetail, CompaniesResponse, CompanyDetail, PrepPlan, ContentType, ResumeAnalysis } from "./types";
+import type { PaginatedJobs, JobDetail, CompaniesResponse, CompanyDetail, PrepPlan, ContentType, ResumeAnalysis, ProfileData } from "./types";
 
 const isServer = typeof window === "undefined";
 const API_BASE = isServer
@@ -76,4 +76,26 @@ export function analyzeResume(resumeText: string): Promise<ResumeAnalysis> {
 
 export function refreshJobs(): Promise<{ refreshed: number }> {
   return apiFetch<{ refreshed: number }>("/api/refresh", { method: "POST" });
+}
+
+// Profile / session tracking
+
+function noCache(options?: RequestInit): RequestInit {
+  return { ...options, next: { revalidate: 0 } } as RequestInit;
+}
+
+export function getProfileData(analysisId: number): Promise<ProfileData> {
+  return apiFetch<ProfileData>(`/api/profiles/${analysisId}/data`, noCache());
+}
+
+export function markApplied(analysisId: number, jobId: number): Promise<{ applied: boolean; job_id: number }> {
+  return apiFetch(`/api/profiles/${analysisId}/apply/${jobId}`, noCache({ method: "POST" }));
+}
+
+export function unmarkApplied(analysisId: number, jobId: number): Promise<{ applied: boolean; job_id: number }> {
+  return apiFetch(`/api/profiles/${analysisId}/apply/${jobId}`, noCache({ method: "DELETE" }));
+}
+
+export function markPrepViewed(analysisId: number, jobId: number, contentType: ContentType): Promise<{ ok: boolean }> {
+  return apiFetch(`/api/profiles/${analysisId}/progress/${jobId}/${contentType}`, noCache({ method: "POST" }));
 }

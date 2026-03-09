@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import type { PrepPlan } from "@/lib/types";
-import { getPrep, getPersonalizedPrep } from "@/lib/api";
+import type { PrepPlan, ContentType } from "@/lib/types";
+import { getPrep, getPersonalizedPrep, markPrepViewed } from "@/lib/api";
 import { CONTENT_TABS, type ContentTypeKey } from "@/lib/utils";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 const RESUME_STORAGE_KEY = "ascend_resume_text";
+const ANALYSIS_ID_KEY = "ascend_analysis_id";
 
 interface PrepAccordionProps {
   jobId: number;
@@ -17,15 +18,21 @@ export function PrepAccordion({ jobId }: PrepAccordionProps) {
   const searchParams = useSearchParams();
   const isPersonalized = searchParams.get("personalized") === "1";
   const [resumeText, setResumeText] = useState<string | null>(null);
+  const [analysisId, setAnalysisId] = useState<number | null>(null);
+  const [viewedTypes, setViewedTypes] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<ContentTypeKey | null>(null);
   const [plans, setPlans] = useState<Partial<Record<ContentTypeKey, PrepPlan>>>({});
   const [loading, setLoading] = useState<Partial<Record<ContentTypeKey, boolean>>>({});
   const [errors, setErrors] = useState<Partial<Record<ContentTypeKey, string>>>({});
 
   useEffect(() => {
-    if (isPersonalized && typeof window !== "undefined") {
-      const saved = localStorage.getItem(RESUME_STORAGE_KEY);
-      setResumeText(saved);
+    if (typeof window !== "undefined") {
+      if (isPersonalized) {
+        const saved = localStorage.getItem(RESUME_STORAGE_KEY);
+        setResumeText(saved);
+      }
+      const id = localStorage.getItem(ANALYSIS_ID_KEY);
+      if (id) setAnalysisId(Number(id));
     }
   }, [isPersonalized]);
 
@@ -46,6 +53,11 @@ export function PrepAccordion({ jobId }: PrepAccordionProps) {
         plan = await getPrep(jobId, type);
       }
       setPlans((p) => ({ ...p, [type]: plan }));
+      // Track progress
+      if (analysisId) {
+        setViewedTypes((prev) => new Set([...prev, type]));
+        markPrepViewed(analysisId, jobId, type as ContentType).catch(() => {});
+      }
     } catch (e) {
       setErrors((p) => ({ ...p, [type]: String(e) }));
     } finally {
@@ -77,11 +89,18 @@ export function PrepAccordion({ jobId }: PrepAccordionProps) {
                 : "Claude Opus · Cached after first load"}
             </p>
           </div>
-          {isPersonalized && (
-            <span className="ml-auto badge border text-[#10B981] bg-[#10B981]/10 border-[#10B981]/20">
-              ✓ Resume-aware
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {viewedTypes.size > 0 && (
+              <span className="badge border text-[var(--text-3)] bg-[var(--elevated)] border-[var(--border)]">
+                {viewedTypes.size}/5 done
+              </span>
+            )}
+            {isPersonalized && (
+              <span className="badge border text-[#10B981] bg-[#10B981]/10 border-[#10B981]/20">
+                ✓ Resume-aware
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -110,6 +129,9 @@ export function PrepAccordion({ jobId }: PrepAccordionProps) {
               </span>
               {isDone && !isLoading && (
                 <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[var(--green)]" title="Ready" />
+              )}
+              {!isDone && !isLoading && viewedTypes.has(tab.type) && (
+                <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[var(--accent)]" title="Viewed" />
               )}
             </button>
           );

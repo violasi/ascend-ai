@@ -11,6 +11,7 @@ from app.companies.router import router as companies_router
 from app.jobs.router import router as jobs_router
 from app.prep.router import router as prep_router
 from app.resume.router import router as resume_router
+from app.profiles.router import router as profiles_router
 from app.scheduler import start_scheduler, stop_scheduler
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
@@ -68,6 +69,7 @@ app.include_router(companies_router, prefix="/api")
 app.include_router(jobs_router, prefix="/api")
 app.include_router(prep_router, prefix="/api")
 app.include_router(resume_router, prefix="/api")
+app.include_router(profiles_router, prefix="/api")
 
 
 @app.get("/health")

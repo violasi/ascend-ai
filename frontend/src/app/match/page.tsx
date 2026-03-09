@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { analyzeResume } from "@/lib/api";
+import { analyzeResume, markApplied, unmarkApplied, getProfileData } from "@/lib/api";
 import { CompanyLogo } from "@/components/ui/CompanyLogo";
 import type { ResumeProfile, JobMatch } from "@/lib/types";
 import { LevelBadge } from "@/components/jobs/LevelBadge";
@@ -10,6 +10,8 @@ import { RemotePill } from "@/components/jobs/RemotePill";
 
 const RESUME_STORAGE_KEY = "ascend_resume_text";
 const PROFILE_STORAGE_KEY = "ascend_resume_profile";
+const MATCHES_STORAGE_KEY = "ascend_matches";
+const ANALYSIS_ID_KEY = "ascend_analysis_id";
 
 function ScoreRing({ score }: { score: number }) {
   const color = score >= 85 ? "var(--green)" : score >= 65 ? "var(--accent-light)" : "var(--amber)";
@@ -106,7 +108,36 @@ function ProfileCard({ profile }: { profile: ResumeProfile }) {
   );
 }
 
-function MatchCard({ match }: { match: JobMatch }) {
+function MatchCard({ match, analysisId, appliedJobIds, onAppliedChange }: {
+  match: JobMatch;
+  analysisId: number | null;
+  appliedJobIds: Set<number>;
+  onAppliedChange: (jobId: number, applied: boolean) => void;
+}) {
+  const isApplied = appliedJobIds.has(match.job_id);
+  const [applying, setApplying] = useState(false);
+
+  async function handleApply(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!analysisId) {
+      window.open(match.url, "_blank", "noopener,noreferrer");
+      return;
+    }
+    setApplying(true);
+    try {
+      if (isApplied) {
+        await unmarkApplied(analysisId, match.job_id);
+        onAppliedChange(match.job_id, false);
+      } else {
+        await markApplied(analysisId, match.job_id);
+        onAppliedChange(match.job_id, true);
+        window.open(match.url, "_blank", "noopener,noreferrer");
+      }
+    } finally {
+      setApplying(false);
+    }
+  }
+
   return (
     <div className="card p-5 flex gap-4 group">
       <ScoreRing score={match.match_score} />
@@ -172,12 +203,22 @@ function MatchCard({ match }: { match: JobMatch }) {
           >
             ✦ Personalized Prep
           </Link>
-          <a href={match.url} target="_blank" rel="noopener noreferrer" className="btn-ghost text-xs py-1.5 px-3">
-            Apply
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-          </a>
+          <button
+            onClick={handleApply}
+            disabled={applying}
+            className={`text-xs py-1.5 px-3 flex items-center gap-1.5 rounded-xl border font-semibold transition-all disabled:opacity-60 ${
+              isApplied
+                ? "bg-[var(--green)]/10 border-[var(--green)]/30 text-[var(--green)]"
+                : "btn-ghost"
+            }`}
+          >
+            {applying ? "…" : isApplied ? "✓ Applied" : "Apply"}
+            {!isApplied && !applying && (
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -214,7 +255,49 @@ export default function MatchPage() {
   const [profile, setProfile] = useState<ResumeProfile | null>(null);
   const [matches, setMatches] = useState<JobMatch[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [analysisId, setAnalysisId] = useState<number | null>(null);
+  const [savedAnalysisId, setSavedAnalysisId] = useState<number | null>(null);
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleAppliedChange = useCallback((jobId: number, applied: boolean) => {
+    setAppliedJobIds((prev) => {
+      const next = new Set(prev);
+      if (applied) next.add(jobId); else next.delete(jobId);
+      return next;
+    });
+  }, []);
+
+  // On mount — restore previous session if it exists
+  useEffect(() => {
+    const id = localStorage.getItem(ANALYSIS_ID_KEY);
+    const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+    const savedMatches = localStorage.getItem(MATCHES_STORAGE_KEY);
+
+    if (id) {
+      const aid = Number(id);
+      setSavedAnalysisId(aid);
+      setAnalysisId(aid);
+
+      // Restore full results so the user lands back in results stage
+      if (savedProfile && savedMatches) {
+        try {
+          const parsedProfile: ResumeProfile = JSON.parse(savedProfile);
+          const parsedMatches: JobMatch[] = JSON.parse(savedMatches);
+          setProfile(parsedProfile);
+          setMatches(parsedMatches);
+          // Also restore applied job state from backend
+          getProfileData(aid)
+            .then((data) => setAppliedJobIds(new Set(data.applied_job_ids)))
+            .catch(() => {});
+          setStage("results");
+        } catch {
+          // Corrupted data — stay on upload
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const analyze = useCallback(async (text: string) => {
     setStage("analyzing");
@@ -223,10 +306,16 @@ export default function MatchPage() {
       const result = await analyzeResume(text);
       setProfile(result.profile);
       setMatches(result.matches);
-      // Persist for personalized prep
+      // Persist for personalized prep and session tracking
       if (typeof window !== "undefined") {
         localStorage.setItem(RESUME_STORAGE_KEY, text);
         localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(result.profile));
+        localStorage.setItem(MATCHES_STORAGE_KEY, JSON.stringify(result.matches));
+        if (result.analysis_id) {
+          localStorage.setItem(ANALYSIS_ID_KEY, String(result.analysis_id));
+          setAnalysisId(result.analysis_id);
+          setSavedAnalysisId(result.analysis_id);
+        }
       }
       setStage("results");
     } catch (e) {
@@ -286,6 +375,22 @@ export default function MatchPage() {
         {/* Upload stage */}
         {stage === "upload" && (
           <div className="max-w-2xl mx-auto">
+            {/* Previous session banner */}
+            {savedAnalysisId && (
+              <div className="mb-4 p-4 rounded-xl bg-[var(--accent)]/10 border border-[var(--accent)]/30 flex items-center gap-3">
+                <span className="text-lg">↩</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[var(--accent-light)]">Resume your session</p>
+                  <p className="text-xs text-[var(--text-3)] mt-0.5">We found a previous analysis with applied jobs and prep progress.</p>
+                </div>
+                <Link
+                  href="/"
+                  className="btn-ghost text-xs py-1.5 px-3 flex-shrink-0 border-[var(--accent)]/30"
+                >
+                  View Jobs
+                </Link>
+              </div>
+            )}
             <div className="card p-8 space-y-6">
               <div>
                 <label className="block text-sm font-semibold text-[var(--text-1)] mb-1">
@@ -396,7 +501,15 @@ export default function MatchPage() {
                 <p className="text-xs text-[var(--text-3)] mt-0.5">Sorted by match score · Click "Personalized Prep" on any role to get a tailored interview plan</p>
               </div>
               <button
-                onClick={() => { setStage("upload"); setResumeText(""); setProfile(null); setMatches([]); }}
+                onClick={() => {
+                setStage("upload"); setResumeText(""); setProfile(null); setMatches([]);
+                localStorage.removeItem(PROFILE_STORAGE_KEY);
+                localStorage.removeItem(MATCHES_STORAGE_KEY);
+                localStorage.removeItem(ANALYSIS_ID_KEY);
+                localStorage.removeItem(RESUME_STORAGE_KEY);
+                setAnalysisId(null); setSavedAnalysisId(null);
+                setAppliedJobIds(new Set());
+              }}
                 className="btn-ghost text-xs py-1.5 px-3 flex-shrink-0"
               >
                 ↑ Upload new resume
@@ -431,7 +544,13 @@ export default function MatchPage() {
                   Top {matches.length} Matches
                 </p>
                 {matches.map((m) => (
-                  <MatchCard key={m.job_id} match={m} />
+                  <MatchCard
+                    key={m.job_id}
+                    match={m}
+                    analysisId={analysisId}
+                    appliedJobIds={appliedJobIds}
+                    onAppliedChange={handleAppliedChange}
+                  />
                 ))}
               </div>
             </div>

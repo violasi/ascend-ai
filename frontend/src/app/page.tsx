@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getJobs, getCompanies, type JobFilters } from "@/lib/api";
+import { getJobs, getCompanies, getProfileData, markApplied, unmarkApplied, type JobFilters } from "@/lib/api";
 import type { Job, Company } from "@/lib/types";
 import { JobGrid } from "@/components/jobs/JobGrid";
 import { JobFiltersPanel } from "@/components/jobs/JobFilters";
@@ -15,6 +15,8 @@ function StatPill({ value, label }: { value: string | number; label: string }) {
   );
 }
 
+const ANALYSIS_ID_KEY = "ascend_analysis_id";
+
 export default function HomePage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -23,6 +25,17 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<JobFilters>({ page: 1, limit: 21 });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [analysisId, setAnalysisId] = useState<number | null>(null);
+  const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(new Set());
+  const [prepProgress, setPrepProgress] = useState<Record<string, string[]>>({});
+
+  const handleAppliedChange = useCallback((jobId: number, applied: boolean) => {
+    setAppliedJobIds((prev) => {
+      const next = new Set(prev);
+      if (applied) next.add(jobId); else next.delete(jobId);
+      return next;
+    });
+  }, []);
 
   const loadJobs = useCallback(async (f: JobFilters) => {
     setLoading(true);
@@ -42,6 +55,18 @@ export default function HomePage() {
     getCompanies()
       .then((data) => setCompanies([...data.faang_plus, ...data.ai_startup]))
       .catch(console.error);
+    // Load profile data if a previous session exists
+    const id = localStorage.getItem(ANALYSIS_ID_KEY);
+    if (id) {
+      const aid = Number(id);
+      setAnalysisId(aid);
+      getProfileData(aid)
+        .then((data) => {
+          setAppliedJobIds(new Set(data.applied_job_ids));
+          setPrepProgress(data.prep_progress);
+        })
+        .catch(() => {}); // silently ignore if session expired
+    }
   }, []);
 
   useEffect(() => { loadJobs(filters); }, [filters, loadJobs]);
@@ -119,7 +144,14 @@ export default function HomePage() {
 
           {/* Grid + pagination */}
           <div className="flex-1 min-w-0">
-            <JobGrid jobs={jobs} loading={loading} />
+            <JobGrid
+              jobs={jobs}
+              loading={loading}
+              analysisId={analysisId}
+              appliedJobIds={appliedJobIds}
+              prepProgress={prepProgress}
+              onAppliedChange={handleAppliedChange}
+            />
 
             {pages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-8">

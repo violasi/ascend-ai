@@ -95,4 +95,16 @@ export interface JobMatch {
 export interface ResumeAnalysis {
   profile: ResumeProfile;
   matches: JobMatch[];
+  analysis_id?: number;
+}
+
+export interface ProfileData {
+  analysis_id: number;
+  candidate_name: string;
+  candidate_level: string;
+  profile: ResumeProfile;
+  analyzed_at: string;
+  applied_job_ids: number[];
+  /** job_id (string key) → list of viewed content_types */
+  prep_progress: Record<string, string[]>;
 }

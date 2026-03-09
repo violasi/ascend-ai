@@ -78,7 +78,16 @@ Every job listing unlocks 5 AI-generated, Claude Opus-powered prep plans:
 
 Plans are cached in PostgreSQL after first generation — instant on repeat access.
 
-### 4. Design That Signals Quality
+### 4. Persistent Profile & Progress Tracking
+Every session is persisted and fully restorable:
+
+- **Unique profile** created on resume analysis, stored in PostgreSQL
+- **Applied jobs** tracked per profile — "✓ Applied" badge persists across sessions
+- **Prep progress** tracked per job — dot indicators show how many of 5 prep tabs you've completed
+- **Session resume** — navigate away and come back; your matches, applied state, and prep progress are all restored from local + backend storage
+- **Zero re-analysis** — your results live in localStorage and backend until you explicitly start fresh
+
+### 5. Design That Signals Quality
 Built on a **"terminal meets luxury"** dark design system. Every pixel communicates: *this is a tool built for elite engineers, by elite engineers.*
 
 - Background: `#07080C` near-black with surface layers
@@ -179,7 +188,7 @@ Built on a **"terminal meets luxury"** dark design system. Every pixel communica
 ### Defensibility
 - **Data moat**: 6-hour refresh from 31 ATS integrations. Competitors scrape weeks-old data.
 - **Personalization flywheel**: Every resume analyzed improves match calibration. Network effects increase value.
-- **Switching cost**: 6+ weeks of AI-generated study plans, bookmarked roles, saved prep — users don't leave mid-prep.
+- **Switching cost**: 6+ weeks of AI-generated study plans, tracked applications, saved prep progress — users don't leave mid-prep.
 - **Brand**: "The platform that got me into Anthropic." Word-of-mouth in tight engineer communities (Blind, levels.fyi, Twitter/X) is worth more than any ad.
 
 ### Comparable Exits
@@ -271,16 +280,22 @@ open http://localhost:3001
 ## API Reference
 
 ```
-GET  /api/jobs                                # Paginated (q, level, remote, company, tier)
-GET  /api/jobs/{id}                           # Job detail
-GET  /api/jobs/{id}/prep/{type}               # Get/generate cached prep plan
-POST /api/jobs/{id}/prep/{type}/personalized  # Resume-personalized prep plan
-POST /api/resume/analyze                      # Parse resume → profile + job matches
-POST /api/resume/parse-pdf                    # Extract text from uploaded PDF
-GET  /api/companies                           # All companies grouped by tier
-GET  /api/companies/{slug}                    # Company profile + open roles
-POST /api/refresh                             # Trigger manual job refresh
-GET  /health                                  # Health check
+GET    /api/jobs                                        # Paginated (q, level, remote, company, tier)
+GET    /api/jobs/{id}                                   # Job detail
+GET    /api/jobs/{id}/prep/{type}                       # Get/generate cached prep plan
+POST   /api/jobs/{id}/prep/{type}/personalized          # Resume-personalized prep plan
+POST   /api/resume/analyze                              # Parse resume → profile + job matches + analysis_id
+POST   /api/resume/parse-pdf                            # Extract text from uploaded PDF
+GET    /api/resume/analyses                             # List all stored analyses
+GET    /api/resume/analyses/{id}                        # Single stored analysis
+GET    /api/profiles/{id}/data                          # Profile + applied jobs + prep progress
+POST   /api/profiles/{id}/apply/{job_id}                # Mark job as applied
+DELETE /api/profiles/{id}/apply/{job_id}                # Remove applied status
+POST   /api/profiles/{id}/progress/{job_id}/{type}      # Record prep tab viewed
+GET    /api/companies                                   # All companies grouped by tier
+GET    /api/companies/{slug}                            # Company profile + open roles
+POST   /api/refresh                                     # Trigger manual job refresh
+GET    /health                                          # Health check
 ```
 
 **Prep types:** `coding` · `system_design` · `behavioral` · `company_tips` · `edge_tech`
@@ -317,6 +332,7 @@ ascend-ai/
 │   │   ├── jobs/          # Paginated listing, level detection, SWE filter
 │   │   ├── prep/          # Claude Opus prep generation + caching
 │   │   ├── resume/        # PDF parsing + AI resume analysis + job matching
+│   │   ├── profiles/      # Session tracking: applied jobs + prep progress
 │   │   ├── fetchers/      # Greenhouse, Lever, Ashby ATS fetchers
 │   │   └── scheduler.py   # 6-hour background refresh
 │   └── migrations/schema.sql
