@@ -4,6 +4,8 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8001";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Allow devtunnel / ngrok URLs in dev mode (Next.js 15 cross-origin protection)
+  allowedDevOrigins: ["*.devtunnels.ms", "*.ngrok.io", "*.ngrok-free.app"],
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "logo.clearbit.com" },
