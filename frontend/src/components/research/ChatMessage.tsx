@@ -29,18 +29,19 @@ export function ChatMessage({ role, content }: Props) {
 
   useEffect(() => {
     if (role !== "assistant" || !ref.current) return;
-    import("dompurify").then((mod) => {
-      const DOMPurify = mod.default;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).__dompurify__ = DOMPurify;
+    Promise.all([import("dompurify"), import("marked")]).then(([purifyMod, markedMod]) => {
+      const DOMPurify = purifyMod.default;
+      const { marked } = markedMod;
       if (ref.current) {
-        ref.current.innerHTML = DOMPurify.sanitize(content, {
+        const html = marked(content, { breaks: true }) as string;
+        ref.current.innerHTML = DOMPurify.sanitize(html, {
           ALLOWED_TAGS: [
             "div", "span", "p", "strong", "em", "ul", "ol", "li",
             "table", "tr", "td", "th", "thead", "tbody",
-            "h1", "h2", "h3", "h4", "code", "pre", "br", "small",
+            "h1", "h2", "h3", "h4", "h5", "h6",
+            "code", "pre", "blockquote", "hr", "br", "small", "a",
           ],
-          ALLOWED_ATTR: ["style", "class"],
+          ALLOWED_ATTR: ["style", "class", "href", "target"],
         });
       }
     });

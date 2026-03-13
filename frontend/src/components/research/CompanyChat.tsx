@@ -409,9 +409,21 @@ export function CompanyChat({ companyKey, companyName, expanded, onToggleExpand 
         .chat-assistant-content p { margin: 6px 0; }
         .chat-assistant-content ul, .chat-assistant-content ol { padding-left: 18px; margin: 6px 0; }
         .chat-assistant-content li { margin: 2px 0; }
-        .chat-assistant-content code { background: var(--bg); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
-        .chat-assistant-content pre { background: var(--bg); border-radius: 6px; padding: 10px; overflow-x: auto; font-size: 11px; }
+        .chat-assistant-content code { background: var(--bg); border-radius: 4px; padding: 1px 5px; font-size: 11px; font-family: monospace; }
+        .chat-assistant-content pre { background: var(--bg); border-radius: 6px; padding: 12px; overflow-x: auto; font-size: 12px; margin: 8px 0; border: 1px solid rgba(255,255,255,0.06); }
+        .chat-assistant-content pre code { background: transparent; padding: 0; font-size: 12px; }
         .chat-assistant-content strong { color: var(--text-1); }
+        .chat-assistant-content h1, .chat-assistant-content h2, .chat-assistant-content h3,
+        .chat-assistant-content h4, .chat-assistant-content h5, .chat-assistant-content h6 {
+          color: var(--text-1); font-weight: 600; margin: 10px 0 4px;
+        }
+        .chat-assistant-content h1 { font-size: 15px; }
+        .chat-assistant-content h2 { font-size: 14px; }
+        .chat-assistant-content h3 { font-size: 13px; }
+        .chat-assistant-content h4, .chat-assistant-content h5, .chat-assistant-content h6 { font-size: 12px; }
+        .chat-assistant-content hr { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 10px 0; }
+        .chat-assistant-content blockquote { border-left: 3px solid var(--accent); padding: 6px 12px; margin: 8px 0; color: var(--text-2); background: rgba(99,102,241,0.05); border-radius: 0 6px 6px 0; }
+        .chat-assistant-content a { color: var(--accent-light); text-decoration: underline; }
       `}</style>
     </div>
   );
