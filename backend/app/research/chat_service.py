@@ -45,6 +45,21 @@ def _validate_session_id(session_id: str) -> bool:
         return False
 
 
+async def get_latest_session(company_key: str) -> str | None:
+    """Return the most recently active session_id for this company, or None."""
+    async with get_db() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT session_id FROM company_chat_messages
+            WHERE company_key = $1
+            ORDER BY created_at DESC
+            LIMIT 1
+            """,
+            company_key,
+        )
+    return row["session_id"] if row else None
+
+
 async def get_history(company_key: str, session_id: str) -> list[dict]:
     async with get_db() as conn:
         rows = await conn.fetch(

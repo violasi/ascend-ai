@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, validator
 
 from app.research.service import get_or_generate_research
-from app.research.chat_service import get_history, send_message, clear_history, _validate_session_id
+from app.research.chat_service import get_history, send_message, clear_history, get_latest_session, _validate_session_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["research"])
@@ -81,6 +81,13 @@ async def get_chat_history(
         raise HTTPException(status_code=400, detail="session_id must be a valid UUID v4")
     messages = await get_history(company_key, session_id)
     return {"messages": messages, "company_key": company_key}
+
+
+@router.get("/research/chat/{company_key}/latest-session")
+async def get_latest_chat_session(company_key: str):
+    """Return the most recently active session_id for a company, or null if none."""
+    session_id = await get_latest_session(company_key)
+    return {"session_id": session_id}
 
 
 @router.delete("/research/chat/{company_key}")

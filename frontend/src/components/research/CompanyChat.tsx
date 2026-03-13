@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { getChatHistory, chatCompany, clearChatHistory, type ChatMessage as ChatMessageType } from "@/lib/api";
-import { getOrCreateSessionId } from "@/lib/chatSession";
+import { getChatHistory, chatCompany, clearChatHistory, getLatestChatSession, type ChatMessage as ChatMessageType } from "@/lib/api";
+import { getOrCreateSessionId, saveSessionId } from "@/lib/chatSession";
 import { ChatMessage } from "./ChatMessage";
 
 interface Props {
@@ -37,7 +37,8 @@ export function CompanyChat({ companyKey, companyName, expanded, onToggleExpand 
     setSessionId(getOrCreateSessionId());
   }, []);
 
-  // Load history whenever companyKey or sessionId changes
+  // Load history whenever companyKey or sessionId changes.
+  // If local session has no messages, check DB for a more recent session to adopt.
   useEffect(() => {
     if (!sessionId || !companyKey) return;
     setUiState("loading_history");
@@ -45,9 +46,22 @@ export function CompanyChat({ companyKey, companyName, expanded, onToggleExpand 
     setError(null);
 
     getChatHistory(companyKey, sessionId)
-      .then(({ messages: msgs }) => {
-        setMessages(msgs);
-        setUiState(msgs.length === 0 ? "empty" : "has_messages");
+      .then(async ({ messages: msgs }) => {
+        if (msgs.length > 0) {
+          setMessages(msgs);
+          setUiState("has_messages");
+          return;
+        }
+        // No history for local session — check if another session exists in DB
+        const { session_id: latestId } = await getLatestChatSession(companyKey);
+        if (latestId && latestId !== sessionId) {
+          // Adopt the existing session so history is visible across origins
+          saveSessionId(latestId);
+          setSessionId(latestId);
+          // History will re-fetch via the sessionId state change
+        } else {
+          setUiState("empty");
+        }
       })
       .catch(() => {
         setUiState("empty");

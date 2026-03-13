@@ -138,3 +138,7 @@ export function chatCompany(companyKey: string, sessionId: string, message: stri
 export function clearChatHistory(companyKey: string, sessionId: string): Promise<{ deleted: number }> {
   return apiFetch(`/api/research/chat/${companyKey}?session_id=${encodeURIComponent(sessionId)}`, noCache({ method: "DELETE" }));
 }
+
+export function getLatestChatSession(companyKey: string): Promise<{ session_id: string | null }> {
+  return apiFetch(`/api/research/chat/${companyKey}/latest-session`, noCache());
+}
