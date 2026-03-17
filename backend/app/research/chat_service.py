@@ -9,7 +9,7 @@ from app.database import get_db
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-sonnet-4-6"
+_MODEL = "claude-haiku-4-5"
 _MAX_TOKENS = 2048
 _HISTORY_LIMIT = 20
 
