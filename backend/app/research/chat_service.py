@@ -74,7 +74,13 @@ async def get_history(company_key: str, session_id: str) -> list[dict]:
     return [{"id": r["id"], "role": r["role"], "content": r["content"]} for r in rows]
 
 
+def _sanitize(text: str) -> str:
+    """Strip NUL bytes and other characters that Anthropic rejects."""
+    return text.replace("\x00", "")
+
+
 async def send_message(company_key: str, session_id: str, message: str) -> str:
+    message = _sanitize(message)
     # Load research context
     async with get_db() as conn:
         research_row = await conn.fetchrow(
@@ -132,7 +138,7 @@ When answering questions:
         messages=messages,
     )
 
-    reply = response.content[0].text
+    reply = _sanitize(response.content[0].text)
 
     # Save both messages
     async with get_db() as conn:
