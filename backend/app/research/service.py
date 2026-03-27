@@ -9,8 +9,8 @@ from app.database import get_db
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-sonnet-4-6"
-_MAX_TOKENS = 4096
+_MODEL = "claude-haiku-4-5"
+_MAX_TOKENS = 6000
 
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS company_research (
@@ -47,6 +47,15 @@ Brief description of what {company_name} builds, engineering scale, notable tech
 ## Interview Loop Structure
 Exact breakdown: number of rounds, types (phone screen / technical / system design / behavioral / bar raiser), approximate duration, who you'll meet. Be specific about format.
 
+## Past Interview Experiences
+Summarize what real candidates have reported about interviewing at {company_name}, based on community sources (Glassdoor, Blind, Leetcode Discuss, Reddit r/cscareerquestions, TeamBlind). Include:
+- **Common questions reported**: Specific coding problems, system design prompts, or behavioral questions that appear repeatedly across candidate reports.
+- **Candidate sentiment**: Overall difficulty rating (Easy / Medium / Hard), how welcoming or intense the process felt, recruiter responsiveness.
+- **Offer vs. no-offer patterns**: What candidates who got offers say they did differently; mistakes reported by those who didn't pass.
+- **Surprises & gotchas**: Anything that caught candidates off guard — unexpected round added, unusual evaluation criteria, or format changes.
+- **Timeline**: Typical time from application to offer, how long each stage takes.
+Be explicit about what is based on community reports vs. official company statements.
+
 ## What They Test
 ### Coding & Algorithms
 Specific DSA patterns they favor, difficulty level, whether they allow pseudocode, time pressure.
@@ -63,8 +72,32 @@ Languages, frameworks, infrastructure, data systems they use. Source any known e
 ## Engineering Culture
 Team structure, on-call expectations, deployment cadence, how decisions are made, remote/hybrid policy.
 
-## Compensation Ranges
-Approximate TC by level (L3/IC2 through L6/IC5+) — base + equity + bonus if available. Cite Levels.fyi or similar if known. Mark as approximate.
+## Compensation Deep Dive
+Provide a detailed breakdown of how {company_name} compensates engineers. Mark all figures as approximate, sourced from Levels.fyi, Blind, or public reports.
+
+### Level Structure
+Map {company_name}'s internal levels to industry equivalents (e.g., L3 = new grad, L5 = senior, L7 = staff). Include what each level means in terms of scope and expectations.
+
+### Compensation by Level
+For each level from new grad to staff/principal (use a markdown table if possible):
+- **Base salary** — range for Bay Area / NYC; note if remote is different
+- **Equity (RSUs)** — annual grant value, vesting schedule (cliff + monthly/quarterly), refresh policy
+- **Annual bonus** — target % and how performance multipliers typically affect it
+- **Estimated total comp (TC)** — low / median / high range
+
+### Location & Remote Pay Policy
+Does {company_name} adjust pay by location? Is there a pay cut for remote? Are there remote-friendly hubs with strong pay?
+
+### Equity Mechanics
+- Grant structure: new hire grant size, vesting cliff, refresh cadence
+- What happens to unvested equity if you leave or are laid off?
+- Is there a double-trigger acceleration clause?
+
+### Negotiation Insights
+- What levers candidates have typically used successfully (sign-on, equity bump, level bump)
+- How much flexibility {company_name} typically shows in negotiations
+- Whether competing offers are effective and how to use them
+- Common mistakes candidates make in comp negotiation at this company
 
 ## Pro Tips
 5-7 specific, actionable tips for interviewing at {company_name}. Include what sets top candidates apart, what mistakes to avoid, and any company-specific quirks.

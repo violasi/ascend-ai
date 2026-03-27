@@ -10,8 +10,8 @@ from app.database import get_db
 logger = logging.getLogger(__name__)
 
 _HAIKU = "claude-haiku-4-5-20251001"
-_OPUS = "claude-opus-4-6"
-_SONNET = "claude-sonnet-4-6"
+_OPUS = "claude-haiku-4-5"
+_SONNET = "claude-haiku-4-5"
 
 
 async def _get_client() -> anthropic.AsyncAnthropic:

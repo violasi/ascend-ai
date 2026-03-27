@@ -16,7 +16,7 @@ from app.prep.prompts import (
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-sonnet-4-6"
+_MODEL = "claude-haiku-4-5"
 _MAX_TOKENS = 4096
 
 _PROMPT_BUILDERS = {
