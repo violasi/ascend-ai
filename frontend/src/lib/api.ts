@@ -54,6 +54,15 @@ export function getCompany(slug: string): Promise<CompanyDetail> {
   return apiFetch<CompanyDetail>(`/api/companies/${slug}`);
 }
 
+export async function getCompanyJobsSafe(slug: string): Promise<CompanyDetail | null> {
+  try {
+    return await getCompany(slug);
+  } catch {
+    // 404 = company not in registry; any other error also treated as "no data"
+    return null;
+  }
+}
+
 export function matchCompanyJobs(slug: string, analysisId: number): Promise<{ matches: import("./types").JobMatch[]; company_name: string; total: number }> {
   return apiFetch(`/api/companies/${slug}/match`, {
     method: "POST",
