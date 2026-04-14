@@ -48,6 +48,7 @@ export interface CompanyDetail extends Company {
 export interface CompaniesResponse {
   faang_plus: Company[];
   ai_startup: Company[];
+  yc_unicorn: Company[];
 }
 
 export type ContentType = "coding" | "system_design" | "behavioral" | "company_tips" | "edge_tech";

@@ -21,6 +21,7 @@ SELECT j.id, j.title, j.level, j.location, j.remote, j.department, j.url, j.fetc
 FROM jobs j
 JOIN companies c ON c.id = j.company_id
 WHERE j.active = TRUE
+  AND j.fetched_at >= NOW() - INTERVAL '60 days'
   AND ($1::text IS NULL OR to_tsvector('english', j.title || ' ' || j.description) @@ plainto_tsquery('english', $1))
   AND ($2::text IS NULL OR j.level = $2)
   AND ($3::boolean IS NULL OR j.remote = $3)
@@ -35,11 +36,19 @@ SELECT COUNT(*)
 FROM jobs j
 JOIN companies c ON c.id = j.company_id
 WHERE j.active = TRUE
+  AND j.fetched_at >= NOW() - INTERVAL '60 days'
   AND ($1::text IS NULL OR to_tsvector('english', j.title || ' ' || j.description) @@ plainto_tsquery('english', $1))
   AND ($2::text IS NULL OR j.level = $2)
   AND ($3::boolean IS NULL OR j.remote = $3)
   AND ($4::bigint IS NULL OR j.company_id = $4)
   AND ($5::text IS NULL OR c.tier = $5)
+"""
+
+DEACTIVATE_STALE_JOBS = """
+UPDATE jobs
+SET active = FALSE
+WHERE active = TRUE
+  AND fetched_at < NOW() - INTERVAL '60 days'
 """
 
 GET_JOB_DETAIL = """

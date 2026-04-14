@@ -95,6 +95,11 @@ export function JobCard({ job, analysisId, isApplied = false, viewedTypes = [], 
             <span className="w-1.5 h-1.5 rounded-full bg-[#C084FC]" /> AI Startup
           </span>
         )}
+        {job.company_tier === "yc_unicorn" && (
+          <span className="badge border text-[#F97316] bg-[#F97316]/10 border-[#F97316]/20 font-bold">
+            <span className="text-[9px] font-black leading-none">YC</span> Unicorn
+          </span>
+        )}
       </div>
 
       {/* Location + time */}

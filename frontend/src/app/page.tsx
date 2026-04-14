@@ -5,6 +5,7 @@ import { getJobs, getCompanies, getProfileData, markApplied, unmarkApplied, type
 import type { Job, Company } from "@/lib/types";
 import { JobGrid } from "@/components/jobs/JobGrid";
 import { JobFiltersPanel } from "@/components/jobs/JobFilters";
+import { YCStartupsSection } from "@/components/jobs/YCStartupsSection";
 
 function StatPill({ value, label }: { value: string | number; label: string }) {
   return (
@@ -28,6 +29,14 @@ export default function HomePage() {
   const [analysisId, setAnalysisId] = useState<number | null>(null);
   const [appliedJobIds, setAppliedJobIds] = useState<Set<number>>(new Set());
   const [prepProgress, setPrepProgress] = useState<Record<string, string[]>>({});
+
+  const handleViewYCAll = useCallback(() => {
+    setFilters((f) => ({ ...f, tier: "yc_unicorn", page: 1 }));
+    // Scroll down to the main results section
+    setTimeout(() => {
+      document.getElementById("job-results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  }, []);
 
   const handleAppliedChange = useCallback((jobId: number, applied: boolean) => {
     setAppliedJobIds((prev) => {
@@ -53,7 +62,7 @@ export default function HomePage() {
 
   useEffect(() => {
     getCompanies()
-      .then((data) => setCompanies([...data.faang_plus, ...data.ai_startup]))
+      .then((data) => setCompanies([...data.faang_plus, ...data.ai_startup, ...(data.yc_unicorn ?? [])]))
       .catch(console.error);
     // Load profile data if a previous session exists
     const id = localStorage.getItem(ANALYSIS_ID_KEY);
@@ -109,8 +118,13 @@ export default function HomePage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        {/* YC & Unicorn featured section */}
+        <div className="pt-8 -mt-5">
+          <YCStartupsSection onViewAll={handleViewYCAll} />
+        </div>
+
         {/* Result bar */}
-        <div className="flex items-center justify-between mb-6 card-static px-5 py-3 -mt-5">
+        <div id="job-results" className="flex items-center justify-between mb-6 card-static px-5 py-3">
           <div className="flex items-center gap-3">
             {!loading && (
               <p className="text-sm text-[var(--text-2)]">

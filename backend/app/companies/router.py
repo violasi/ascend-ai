@@ -32,6 +32,7 @@ async def list_companies():
     return {
         "faang_plus": [c for c in companies if c["tier"] == "faang_plus"],
         "ai_startup": [c for c in companies if c["tier"] == "ai_startup"],
+        "yc_unicorn": [c for c in companies if c["tier"] == "yc_unicorn"],
     }
 
 

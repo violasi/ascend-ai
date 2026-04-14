@@ -59,6 +59,7 @@ export function JobFiltersPanel({ filters, companies, onChange }: JobFiltersProp
             { value: undefined, label: "All Companies" },
             { value: "faang_plus", label: "FAANG++ & Big Tech" },
             { value: "ai_startup", label: "AI Startups" },
+            { value: "yc_unicorn", label: "YC & Unicorns" },
           ].map((opt) => (
             <button
               key={String(opt.value)}

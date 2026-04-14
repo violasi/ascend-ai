@@ -7,7 +7,7 @@ from app.companies.registry import COMPANY_REGISTRY
 from app.fetchers.greenhouse import GreenhouseFetcher
 from app.fetchers.lever import LeverFetcher
 from app.fetchers.ashby import AshbyFetcher
-from app.jobs.queries import UPSERT_JOB
+from app.jobs.queries import UPSERT_JOB, DEACTIVATE_STALE_JOBS
 
 logger = logging.getLogger(__name__)
 
@@ -109,4 +109,12 @@ async def fetch_all_jobs() -> int:
     results = await asyncio.gather(*tasks, return_exceptions=True)
     total = sum(r for r in results if isinstance(r, int))
     logger.info("Fetched %d SWE jobs total", total)
+
+    # Deactivate jobs not seen in the last 60 days (no longer on the company board)
+    async with get_db() as conn:
+        result = await conn.execute(DEACTIVATE_STALE_JOBS)
+        deactivated = int(result.split()[-1]) if result else 0
+        if deactivated:
+            logger.info("Deactivated %d stale jobs (not seen in 60 days)", deactivated)
+
     return total
