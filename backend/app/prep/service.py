@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
-import anthropic
+import openai
 
 from app.config import get_settings
 from app.database import get_db
@@ -16,7 +16,6 @@ from app.prep.prompts import (
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-haiku-4-5"
 _MAX_TOKENS = 4096
 
 _PROMPT_BUILDERS = {
@@ -27,15 +26,15 @@ _PROMPT_BUILDERS = {
     "edge_tech": build_edge_tech_prompt,
 }
 
-# Cost per million tokens (input / output)
+# Cost per million tokens (input / output) — rough defaults
 _COST_TABLE = {
-    "claude-opus-4-6": (15.0, 75.0),
-    "claude-sonnet-4-6": (3.0, 15.0),
+    "gpt-4o": (2.50, 10.0),
+    "gpt-4o-mini": (0.15, 0.60),
 }
 
 
 def _calc_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    inp, out = _COST_TABLE.get(model, (15.0, 75.0))
+    inp, out = _COST_TABLE.get(model, (2.50, 10.0))
     return (input_tokens * inp + output_tokens * out) / 1_000_000
 
 
@@ -72,21 +71,24 @@ async def get_or_generate_prep(job_id: int, content_type: str) -> dict:
     )
 
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    model = settings.llm_model
+    client = openai.AsyncOpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     logger.info("Generating %s prep for job %d (%s @ %s)", content_type, job_id, job["title"], job["company_name"])
 
-    message = await client.messages.create(
-        model=_MODEL,
+    response = await client.chat.completions.create(
+        model=model,
         max_tokens=_MAX_TOKENS,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
     )
 
-    content = message.content[0].text
-    input_tokens = message.usage.input_tokens
-    output_tokens = message.usage.output_tokens
-    cost_usd = _calc_cost(_MODEL, input_tokens, output_tokens)
+    content = response.choices[0].message.content
+    input_tokens = response.usage.prompt_tokens
+    output_tokens = response.usage.completion_tokens
+    cost_usd = _calc_cost(model, input_tokens, output_tokens)
 
     async with get_db() as conn:
         row = await conn.fetchrow(
@@ -102,7 +104,7 @@ async def get_or_generate_prep(job_id: int, content_type: str) -> dict:
                 generated_at = NOW()
             RETURNING *
             """,
-            job_id, content_type, content, _MODEL,
+            job_id, content_type, content, model,
             input_tokens, output_tokens, cost_usd,
         )
 

@@ -37,6 +37,17 @@ CREATE INDEX IF NOT EXISTS idx_jobs_remote  ON jobs(remote);
 CREATE INDEX IF NOT EXISTS idx_jobs_active  ON jobs(active) WHERE active = TRUE;
 CREATE INDEX IF NOT EXISTS idx_jobs_company ON jobs(company_id);
 
+CREATE TABLE IF NOT EXISTS resume_analyses (
+    id              BIGSERIAL    PRIMARY KEY,
+    candidate_name  TEXT         NOT NULL DEFAULT 'Anonymous',
+    candidate_level TEXT         NOT NULL DEFAULT 'L5',
+    resume_text     TEXT         NOT NULL,
+    profile         JSONB        NOT NULL DEFAULT '{}',
+    matches         JSONB        NOT NULL DEFAULT '[]',
+    analyzed_at     TIMESTAMPTZ  DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_resume_analyses_at ON resume_analyses(analyzed_at DESC);
+
 CREATE TABLE IF NOT EXISTS user_applications (
     id           BIGSERIAL    PRIMARY KEY,
     analysis_id  BIGINT       REFERENCES resume_analyses(id) ON DELETE CASCADE,
@@ -55,17 +66,6 @@ CREATE TABLE IF NOT EXISTS prep_progress (
     UNIQUE (analysis_id, job_id, content_type)
 );
 CREATE INDEX IF NOT EXISTS idx_prep_progress_analysis ON prep_progress(analysis_id);
-
-CREATE TABLE IF NOT EXISTS resume_analyses (
-    id              BIGSERIAL    PRIMARY KEY,
-    candidate_name  TEXT         NOT NULL DEFAULT 'Anonymous',
-    candidate_level TEXT         NOT NULL DEFAULT 'L5',
-    resume_text     TEXT         NOT NULL,
-    profile         JSONB        NOT NULL DEFAULT '{}',
-    matches         JSONB        NOT NULL DEFAULT '[]',
-    analyzed_at     TIMESTAMPTZ  DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_resume_analyses_at ON resume_analyses(analyzed_at DESC);
 
 CREATE TABLE IF NOT EXISTS prep_plans (
     id             BIGSERIAL    PRIMARY KEY,

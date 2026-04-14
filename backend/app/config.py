@@ -4,7 +4,10 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     database_url: str
-    anthropic_api_key: str
+    llm_api_key: str
+    llm_base_url: str = "https://api.openai.com/v1"
+    llm_model: str = "gpt-4o-mini"
+    llm_model_strong: str = "gpt-4o"
     job_refresh_interval_hours: int = 6
     fetch_timeout_seconds: int = 15
 

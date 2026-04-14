@@ -2,28 +2,25 @@ from __future__ import annotations
 import json
 import logging
 
-import anthropic
+import openai
 
 from app.config import get_settings
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
 
-_HAIKU = "claude-haiku-4-5-20251001"
-_OPUS = "claude-haiku-4-5"
-_SONNET = "claude-haiku-4-5"
 
-
-async def _get_client() -> anthropic.AsyncAnthropic:
+async def _get_client() -> openai.AsyncOpenAI:
     settings = get_settings()
-    return anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    return openai.AsyncOpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
 
 async def parse_resume(resume_text: str) -> dict:
-    """Extract structured profile from raw resume text using Claude Haiku."""
+    """Extract structured profile from raw resume text."""
+    settings = get_settings()
     client = await _get_client()
-    message = await client.messages.create(
-        model=_HAIKU,
+    response = await client.chat.completions.create(
+        model=settings.llm_model,
         max_tokens=1024,
         messages=[{
             "role": "user",
@@ -46,7 +43,7 @@ Resume text:
         }]
     )
     try:
-        text = message.content[0].text.strip()
+        text = response.choices[0].message.content.strip()
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):
@@ -69,7 +66,8 @@ Resume text:
 
 
 async def match_jobs(profile: dict, jobs: list[dict]) -> list[dict]:
-    """Score and rank jobs against the candidate profile using Claude Haiku."""
+    """Score and rank jobs against the candidate profile."""
+    settings = get_settings()
     client = await _get_client()
 
     job_lines = "\n".join([
@@ -84,8 +82,8 @@ async def match_jobs(profile: dict, jobs: list[dict]) -> list[dict]:
     prev_companies = ", ".join(profile.get("previous_companies", []))
     specializations = ", ".join(profile.get("specializations", []))
 
-    message = await client.messages.create(
-        model=_HAIKU,
+    response = await client.chat.completions.create(
+        model=settings.llm_model,
         max_tokens=4096,
         messages=[{
             "role": "user",
@@ -115,7 +113,7 @@ Respond with ONLY the JSON array."""
     )
 
     try:
-        text = message.content[0].text.strip()
+        text = response.choices[0].message.content.strip()
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):
@@ -152,6 +150,7 @@ async def match_all_jobs(profile: dict, jobs: list[dict]) -> list[dict]:
     if not jobs:
         return []
 
+    settings = get_settings()
     client = await _get_client()
 
     job_lines = "\n".join([
@@ -168,8 +167,8 @@ async def match_all_jobs(profile: dict, jobs: list[dict]) -> list[dict]:
 
     n = len(jobs)
     top_n = min(n, 30)  # cap at 30 to keep response within token budget
-    message = await client.messages.create(
-        model=_HAIKU,
+    response = await client.chat.completions.create(
+        model=settings.llm_model,
         max_tokens=8192,
         messages=[{
             "role": "user",
@@ -199,7 +198,7 @@ Respond with ONLY the JSON array. Do not truncate — output all {top_n} entries
     )
 
     try:
-        text = message.content[0].text.strip()
+        text = response.choices[0].message.content.strip()
         if text.startswith("```"):
             text = text.split("```")[1]
             if text.startswith("json"):
@@ -283,7 +282,7 @@ async def generate_personalized_prep(
     content_type: str,
     resume_text: str,
 ) -> dict:
-    """Generate a resume-aware prep plan using Claude Opus."""
+    """Generate a resume-aware prep plan."""
     from app.prep.prompts import (
         build_coding_prompt, build_system_design_prompt,
         build_behavioral_prompt, build_company_tips_prompt, build_edge_tech_prompt,
@@ -336,21 +335,25 @@ async def generate_personalized_prep(
         "Mention what they already know vs. what they need to learn."
     )
 
+    settings = get_settings()
+    model = settings.llm_model_strong
     client = await _get_client()
-    message = await client.messages.create(
-        model=_SONNET,
+    response = await client.chat.completions.create(
+        model=model,
         max_tokens=4096,
-        system=personalized_system,
-        messages=[{"role": "user", "content": personalized_user}],
+        messages=[
+            {"role": "system", "content": personalized_system},
+            {"role": "user", "content": personalized_user},
+        ],
     )
 
-    content = message.content[0].text
+    content = response.choices[0].message.content
     logger.info("Generated personalized %s prep for job %d", content_type, job_id)
     return {
         "job_id": job_id,
         "content_type": content_type,
         "content": content,
-        "model": _SONNET,
+        "model": model,
         "cached": False,
         "personalized": True,
     }

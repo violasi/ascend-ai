@@ -2,14 +2,13 @@ from __future__ import annotations
 import logging
 import re
 
-import anthropic
+import openai
 
 from app.config import get_settings
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-haiku-4-5"
 _MAX_TOKENS = 6000
 
 _CREATE_TABLE = """
@@ -17,7 +16,7 @@ CREATE TABLE IF NOT EXISTS company_research (
     company_key   TEXT PRIMARY KEY,
     company_name  TEXT NOT NULL,
     content       TEXT NOT NULL,
-    model         TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
+    model         TEXT NOT NULL DEFAULT 'default',
     generated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 """
@@ -131,18 +130,21 @@ async def get_or_generate_research(company_name: str, role_hint: str = "") -> di
     system_prompt, user_prompt = _build_prompt(company_name, role_hint)
 
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    model = settings.llm_model
+    client = openai.AsyncOpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     logger.info("Generating company research for: %s", company_name)
-    message = await client.messages.create(
-        model=_MODEL,
+    response = await client.chat.completions.create(
+        model=model,
         max_tokens=_MAX_TOKENS,
-        system=system_prompt,
-        messages=[{"role": "user", "content": user_prompt}],
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
     )
 
-    content = message.content[0].text
-    logger.info("Generated research for %s (%d tokens)", company_name, message.usage.output_tokens)
+    content = response.choices[0].message.content
+    logger.info("Generated research for %s (%d tokens)", company_name, response.usage.completion_tokens)
 
     async with get_db() as conn:
         row = await conn.fetchrow(
@@ -155,7 +157,7 @@ async def get_or_generate_research(company_name: str, role_hint: str = "") -> di
                 generated_at = NOW()
             RETURNING *
             """,
-            key, company_name, content, _MODEL,
+            key, company_name, content, model,
         )
 
     return {**dict(row), "cached": False}

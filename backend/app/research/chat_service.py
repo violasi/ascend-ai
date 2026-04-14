@@ -2,14 +2,13 @@ from __future__ import annotations
 import logging
 import uuid
 
-import anthropic
+import openai
 
 from app.config import get_settings
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
 
-_MODEL = "claude-haiku-4-5"
 _MAX_TOKENS = 2048
 _HISTORY_LIMIT = 20
 
@@ -75,7 +74,7 @@ async def get_history(company_key: str, session_id: str) -> list[dict]:
 
 
 def _sanitize(text: str) -> str:
-    """Strip NUL bytes and other characters that Anthropic rejects."""
+    """Strip NUL bytes and other problematic characters."""
     return text.replace("\x00", "")
 
 
@@ -125,20 +124,19 @@ When answering questions:
 - Always tie advice back to {company_name} specifically
 - Use dark-theme friendly colors: backgrounds like #1e293b, text like #94a3b8 or #e2e8f0, accents like #3b82f6, #10b981, #f59e0b"""
 
-    messages = history + [{"role": "user", "content": message}]
+    messages = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": message}]
 
     settings = get_settings()
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = openai.AsyncOpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url)
 
     logger.info("Chat message for %s (session %s...)", company_key, session_id[:8])
-    response = await client.messages.create(
-        model=_MODEL,
+    response = await client.chat.completions.create(
+        model=settings.llm_model,
         max_tokens=_MAX_TOKENS,
-        system=system_prompt,
         messages=messages,
     )
 
-    reply = _sanitize(response.content[0].text)
+    reply = _sanitize(response.choices[0].message.content)
 
     # Save both messages
     async with get_db() as conn:
